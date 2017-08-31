@@ -1,0 +1,345 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1404\cocoasubrtf470
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 Point=\{\}\
+\
+Point.__index=Point\
+\
+Point.new = function(x, y, z, d)\
+local pnt=\{\}\
+setmetatable(pnt, Point)\
+pnt.x=x\
+pnt.y=y\
+pnt.z=z\
+pnt.d=d\
+return pnt\
+end\
+_home=Point.new(1,1,1,0)\
+_dump = Point.new(1,1,1,2)\
+_saplings = Point.new(1,3,1,2)\
+_fuel = Point.new(1,5,1,2)\
+trees = \{\}\
+\
+you=\{\}\
+you.pos=Point.new(1,1,1,0)\
+you.direction=function(x)\
+return math.abs(x%4)\
+end\
+INV_MAX=16\
+FUEL_SLOT=16\
+SAPLING_REQ=1\
+TREE_RAD=1\
+HARVEST_RAD=1\
+NUM_TREES=0\
+\
+function createTreeArray()\
+local x=5\
+local y=5\
+local z=1\
+local d=0\
+local i=0\
+trees[i] = Point.new(x,y,z,d)\
+while x<39 do\
+while y<40 do\
+y=y+5\
+trees[i]=Point.new(x,y,z,d)\
+i=i+1\
+end\
+y=5\
+x=x+5\
+end\
+NUM_TREES=i\
+end\
+\
+you.invIsFull = function()\
+for i=1, INV_MAX do\
+if turtle.getItemSpace(i)>0 then\
+return false\
+end\
+end\
+return true\
+end\
+\
+you.invIsEmpty = function()\
+for i=1, INV_MAX do\
+if turtle.getItemCount(i) > 0 then\
+return false\
+end\
+end\
+return true\
+end\
+\
+you.turn = function(degrees)\
+local i=0\
+while i<degrees do\
+if degrees>180 and degrees<360 then\
+turtle.turnRight()\
+you.pos.d=you.direction(you.pos.d-1)\
+i=degrees\
+else\
+turtle.turnLeft()\
+you.pos.d=you.direction(you.pos.d+1)\
+i=i+90\
+end\
+end\
+end\
+\
+you.turnTo=function(dir)\
+while dir~=you.pos.d do\
+you.turn(90)\
+end\
+print("Completed turnto. turned to "..you.pos.d)\
+end\
+\
+you.move = function(count)\
+for i=0, count-1 do\
+while not turtle.forward() do\
+turtle.dig()\
+end\
+if you.pos.d==0 then\
+you.pos.x=you.pos.x+1\
+elseif you.pos.d==2 then\
+you.pos.x=you.pos.x-1\
+elseif you.pos.d==1 then\
+you.pos.y=you.pos.y+1\
+elseif you.pos.d==3 then\
+you.pos.y=you.pos.y-1\
+end\
+end\
+end\
+\
+you.moveVertical = function(count)\
+print("Moving Vertical")\
+if count>0 then\
+for i=0, count-1 do\
+turtle.up()\
+you.pos.z=you.pos.z+1\
+end\
+else\
+for i=count, -1, 1 do\
+turtle.down()\
+you.pos.z=you.pos.z-1\
+end\
+end\
+end\
+\
+you.placeUnder = function()\
+if not turtle.placeDown() then\
+turtle.digDown()\
+turtle.placeDown()\
+end\
+end\
+\
+you.storeInv=function()\
+for i=1, INV_MAX do\
+turtle.select(i)\
+turtle.drop()\
+end\
+end\
+\
+you.moveTo = function(_point)\
+print("moveTo inited")\
+local destX = _point.x\
+print("Destx="..destX)\
+local destY = _point.y\
+print("Desty="..destY)\
+local destZ = _point.z\
+print("DestZ="..destZ)\
+local destD = _point.d\
+print("DestD="..destD)\
+if you.pos.z < destZ then\
+for i=you.pos.z, destZ-1 do\
+if turtle.detectUp() and not(you.pos.z == destZ) then turtle.digUp() end\
+you.moveVertical(1)\
+print(you.pos.x..", "..you.pos.y..", "..you.pos.z)\
+end\
+elseif you.pos.z > destZ  then\
+for i=you.pos.z, destZ+1, -1 do\
+if turtle.detectDown() and not (you.pos.z == destZ) then turtle.digDown() end\
+you.moveVertical(-1)\
+print(you.pos.x..", "..you.pos.y..", "..you.pos.z)\
+end\
+end\
+\
+if you.pos.x < destX then\
+you.turnTo(0)\
+for i=you.pos.x, destX-1 do\
+if turtle.detect()  then\
+turtle.dig()\
+end\
+you.move(1)\
+\
+print(you.pos.x..", "..you.pos.y)\
+end\
+elseif you.pos.x > destX then\
+you.turnTo(2)\
+print("initing for, posx>destx")\
+for i=you.pos.x, destX+1, -1 do\
+if turtle.detect()  then\
+turtle.dig()\
+end\
+you.move(1)\
+\
+print(you.pos.x..", "..you.pos.y)\
+end\
+end\
+if you.pos.y < destY then\
+you.turnTo(1)\
+for i=you.pos.y, destY-1 do\
+if turtle.detect() then\
+turtle.dig()\
+end\
+you.move(1)\
+print(you.pos.x..", "..you.pos.y)\
+end\
+\
+elseif you.pos.y > destY then\
+you.turnTo(3)\
+for i=you.pos.y, destY+1, -1 do\
+if turtle.detect()  then\
+turtle.dig()\
+end\
+you.move(1)\
+print(you.pos.x..", "..you.pos.y)\
+end\
+end\
+you.turnTo(destD)\
+print("MovedTo")\
+end\
+\
+function interimPt(tree)\
+if tree.x<=trees[0].x-1 then return you.pos end\
+return Point.new(tree.x-1,tree.y+1,tree.z, you.pos.d)\
+end\
+\
+function collect(dest)\
+local current=you.pos\
+you.moveTo(interimPt(you.pos))\
+you.moveTo(dest)\
+turtle.suck()\
+you.moveTo(interimPt(current))\
+you.moveTo(current)\
+end\
+\
+function deposit(dest)\
+local current = you.pos\
+print(current.x.."--"..current.y.."--"..current.z)\
+you.moveTo(interimPt(current))\
+you.moveTo(dest)\
+print("Deposit: Moved to")\
+you.storeInv()\
+print("Deposit line 66: Moving to current")\
+you.moveTo(interimPt(current))\
+you.moveTo(current)\
+print("Deposit successful")\
+end\
+\
+function fuel()\
+local selectstate = turtle.getSelectedSlot()\
+turtle.select(FUEL_SLOT)\
+while(turtle.getFuelLevel()<turtle.getFuelLimit()) do\
+turtle.refuel()\
+if turtle.getItemCount(FUEL_SLOT)==0 then\
+collect(_fuel)\
+if turtle.getItemCount(FUEL_SLOT)==0 then break end\
+end\
+end\
+turtle.select(selectstate)\
+end\
+\
+function rowed_square(leng, interval, fnc)\
+if leng==1 then\
+fnc()\
+else \
+local tn=270\
+for i=1, leng+1 do\
+if you.invIsFull() then\
+deposit(_dump)\
+end\
+fnc()\
+if (i~=1) and (i % interval==0) then\
+you.turn(tn)\
+you.move(1)\
+fnc()\
+you.turn(tn)\
+if tn==270 then tn=90 else tn=270 end\
+end\
+you.move(1)\
+end\
+end\
+end\
+\
+function plant(numb)\
+turtle.select(1)\
+if (turtle.getItemCount(1)<SAPLING_REQ) then collect(_saplings) end\
+local interim=interimPt(trees[numb])\
+you.moveTo(interim)\
+you.moveTo(Point.new(trees[numb].x,trees[numb].y,trees[numb].z+1,trees[numb].d))\
+rowed_square(SAPLING_REQ, math.sqrt(SAPLING_REQ), you.placeUnder)\
+you.turnTo(2)\
+you.move(1)\
+end\
+\
+function harvestPt(pt)\
+return Point.new(pt.x-1,pt.y,pt.z,pt.d)\
+end\
+\
+function harvest()\
+local detected=false\
+for i=0, NUM_TREES-1 do\
+local hascut=false\
+local interim = interimPt(trees[i])\
+you.moveTo(interim)\
+you.moveTo(harvestPt(trees[i]))\
+while not(hascut) do\
+if(turtle.detect() or detected==true) then\
+while(turtle.detect() or detected==true) do\
+if(turtle.detect()) then detected=false end\
+if(turtle.detectUp()) then turtle.digUp() end\
+you.moveVertical(1)\
+end\
+you.move(1)\
+for e=you.pos.z, trees[i].z, -1 do\
+local dfRad=HARVEST_RAD-TREE_RAD\
+if dfRad>0 then\
+you.turn(90)\
+you.move(HARVEST_RAD-TREE_RAD)\
+you.turn(90)\
+you.move(HARVEST_RAD-TREE_RAD)\
+you.turnTo(trees[i].d)\
+end\
+rowed_square(math.pow(HARVEST_RAD,2),HARVEST_RAD,turtle.digDown)\
+you.moveTo((Point.new(trees[i].x, trees[i].y, trees[i].z+1, trees[i].d)))\
+end \
+--change to move 1 down if 4 wide trees used\
+hascut=true\
+else\
+you.moveVertical(1)\
+if turtle.detect() then\
+you.moveVertical(-1)\
+detected=true\
+else\
+os.sleep(20)\
+you.moveVertical(-1)\
+end\
+\
+end\
+end\
+deposit(_dump)\
+plant(i)\
+deposit(_saplings)\
+fuel()\
+end\
+end\
+\
+createTreeArray()\
+--for i=0, NUM_TREES-1 do\
+--plant(i)\
+--end\
+\
+while true do\
+harvest()\
+end}
