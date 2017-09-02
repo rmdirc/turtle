@@ -55,16 +55,17 @@ function ERR_RESTART(msg)
 end
 
 function createTreeArray(TREE_SPACING)
-  local x,y,z,d,i = 5,5,1,0,1
+  local T = TREE_SPACING
+  local x,y,z,d,i = T,T,1,0,1
   trees[i] = Point.new(x,y,z,d)
   while x<BOUNDS.x.upper do
     while y<BOUNDS.y.upper do
-      y=y+TREE_SPACING
+      y=y+T
       trees[i]=Point.new(x,y,z,d)
       i=i+1
     end
-    y=5
-    x=x+5
+    y=T
+    x=x+T
   end
 end
 
@@ -109,7 +110,7 @@ you.turnTo=function(dir)
 end
 
 you.move = function(count, boolBreakBlock)
-  if boolBreakBlock=="" then
+  if boolBreakBlock==nil then
     boolBreakBlock=true
   end
   for i=0, count-1 do
@@ -225,16 +226,16 @@ you.moveTo = function(_point)
   print("MovedTo successful")
 end
 
-function interimPt(tree)
+function interimPt(tree) --creates a Point object which is diagonally across from the tree, preventing turtle colliding with trees during MoveTo
   if tree.x<=trees[0].x-1 then return you.pos end
   return Point.new(tree.x-1,tree.y+1,tree.z, you.pos.d)
 end
 
-function harvestPt(pt)
+function harvestPt(pt) --creates Point object which is in front of tree facing to lowest block of wood
   return Point.new(pt.x-1,pt.y,pt.z,pt.d)
 end
 
-function collect(dest)
+function collect(dest) --collects items from a chest, uses interim points
   local current=you.pos
   you.moveTo(interimPt(you.pos))
   you.moveTo(_dump) --dump while you're at it, remove if issues occur
@@ -243,39 +244,40 @@ function collect(dest)
   turtle.suck()
   you.moveTo(interimPt(current))
   you.moveTo(current)
+  print("Collect successful")
 end
 
-function deposit(dest)
+function deposit(dest) --deposits items to chest, uses interim pts
   local current = you.pos
-  print(current.x.."--"..current.y.."--"..current.z)
+  --print(current.x.."--"..current.y.."--"..current.z)
   you.moveTo(interimPt(current))
   you.moveTo(dest)
-  print("Deposit: Moved to")
+  --print("Deposit: Moved to")
   you.storeInv()
-  print("Deposit line 66: Moving to current")
+  --print("Moving to current")
   you.moveTo(interimPt(current))
   you.moveTo(current)
   print("Deposit successful")
 end
 
 function fuel()
-  local selectstate = turtle.getSelectedSlot()
+  local selectstate = turtle.getSelectedSlot() --holds slot that turtle had prior to refuelling so turtle may resume after
   turtle.select(FUEL_SLOT)
   while(turtle.getFuelLevel()<turtle.getFuelLimit()) do
     turtle.refuel()
     if turtle.getItemCount(FUEL_SLOT)==0 then
       collect(_fuel)
-      if turtle.getItemCount(FUEL_SLOT)==0 then break end
+      if turtle.getItemCount(FUEL_SLOT)==0 then break end --if turtle has tried to collect fuel and still no fuel, end loop
     end
   end
   turtle.select(selectstate)
 end
 
-function rowed_square(leng, interval, fnc) -- fnc MUST be function, ROWED_SQUARE is a method of covering a 2d surface by weaving in 2 directions
-  if leng==1 then
-    fnc()
+function rowed_square(leng, interval, st, fnc) -- fnc MUST be function, ROWED_SQUARE is a method of covering a 2d surface by weaving in 2 directions
+  if leng==1 then                         --leng is total length of weave, interval is side length, e.g. if 5x5 block is to be dug, rowed_square(25,5,turtle.digDown)
+    fnc() 
   else
-    local tn=270
+    local tn=st
     for i=1, leng+1 do
       if you.invIsFull() then
         deposit(_dump)
@@ -286,11 +288,7 @@ function rowed_square(leng, interval, fnc) -- fnc MUST be function, ROWED_SQUARE
         you.move(1)
         fnc()
         you.turn(tn)
-        if tn==270 then
-          tn=90
-        else
-          tn=270
-        end
+        tn = (90*270)/tn --if tn=90 then tn=270 elseif tn=270 then tn=90
       end
       you.move(1)
     end
@@ -305,12 +303,12 @@ function plant(numb)
   end
   you.moveTo(interimPt(trees[numb]))
   you.moveTo(Point.new(trees[numb].x,trees[numb].y,trees[numb].z+1,trees[numb].d))
-  rowed_square(SAPLING_REQ, math.sqrt(SAPLING_REQ), you.placeUnder)
+  rowed_square(SAPLING_REQ, math.sqrt(SAPLING_REQ), you.placeUnder) --assuming sapling planting will always be square
   you.turnTo(2)
   you.move(1)
 end
 
-function vacuum(currentTree)
+function vacuum(currentTree) -- sucks up saplings in a square immediately around the tree
   you.moveTo(interimPt(trees[currentTree]))
   you.turnTo(trees[currentTree].pos.d)
   turtle.select(SAPLING_SLOT)
@@ -339,17 +337,21 @@ function harvest()
           you.moveVertical(1)
         end
         you.move(1)
+      local evenoddcounter=0
         for e=you.pos.z, trees[i].z+1, -1 do
-          local dfRad=HARVEST_RAD-TREE_RAD
+          local dfRad=HARVEST_RAD-TREE_RAD --distance between harvest point and start of rowed_square()
           if dfRad>0 then
             you.turn(90)
-            you.move(HARVEST_RAD-TREE_RAD)
+            you.move(dfRad)
             you.turn(90)
-            you.move(HARVEST_RAD-TREE_RAD)
+            you.move(dfRad)
             you.turnTo(trees[i].d)
           end
-          rowed_square(math.pow(HARVEST_RAD,2),HARVEST_RAD,turtle.digDown)
-          you.moveTo(Point.new(you.pos.x,you.pos.y,you.pos.z-1,you.pos.d)) --move 1 down, digDown
+          local startTurn=90
+          if evenoddcounter%2==0 then startTurn=90 else startTurn=270 end
+          rowed_square(math.pow(HARVEST_RAD,2),HARVEST_RAD,startTurn,turtle.digDown)
+          evenoddcounter=evenoddcounter+1
+          you.moveTo(Point.new(you.pos.x,you.pos.y,you.pos.z-1,trees[i].pos.d)) --move 1 down, digDown
         end
         hascut=true
       else
